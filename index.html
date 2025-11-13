@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora IA</title>
+
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #1e293b;
+      --primary-color: #2563eb; /* Azul moderno */
+      --accent-color: #38bdf8;  /* Azul celeste */
+      --border-color: #e2e8f0;
+      --error-color: #dc2626;
+      --shadow-color: rgba(0, 0, 0, 0.05);
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 6px 20px var(--shadow-color);
+      padding: 2rem 2.5rem;
+      width: 100%;
+      max-width: 480px;
+      border: 1px solid var(--border-color);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px var(--shadow-color);
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+      text-align: center;
+    }
+
+    p {
+      font-size: 0.95rem;
+      color: #475569;
+      text-align: center;
+      margin-bottom: 1.8rem;
+    }
+
+    label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: block;
+      color: var(--text-color);
+    }
+
+    textarea {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      padding: 0.9rem;
+      font-family: inherit;
+      font-size: 1rem;
+      resize: vertical;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    textarea:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      outline: none;
+    }
+
+    button {
+      width: 100%;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 0.9rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: var(--accent-color);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background-color: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    /* Spinner */
+    .spinner{
+      width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);border-top-color:rgba(255,255,255,0.9);animation:spin .8s linear infinite;display:inline-block
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    #resultado {
+      margin-top: 1.5rem;
+      font-size: 1rem;
+    }
+
+    .card2 {
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 1.5rem;
+      text-align: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .card2 h1 {
+      font-size: 1.2rem;
+      color: var(--primary-color);
+      margin-bottom: 0.8rem;
+    }
+
+    .card2 p {
+      color: var(--text-color);
+      margin: 0.4rem 0;
+    }
+
+    #resultado:not(:empty):not(:has(.card2)) {
+      color: var(--error-color);
+      border: 1px solid var(--error-color);
+      padding: 1rem;
+      border-radius: 10px;
+      background: #fef2f2;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Calculadora IA</h1>
+    <p>Realiza operaciones aritméticas complejas de forma sencilla y rápida.</p>
+
+    <form id="calcForm">
+      <label for="operacion">Escribe tu operación <span style="color:var(--error-color)">*</span></label>
+      <textarea id="operacion" name="operacion" placeholder="Ejemplo: (4+2)*3" required></textarea>
+      <button id="submitBtn" type="submit">Calcular</button>
+    </form>
+
+    <div id="resultado"></div>
+  </div>
+
+  <script>
+    const webhookURL = "https://michell1283.app.n8n.cloud/webhook/6e85541f-bb79-41c1-b05b-b887575f2d48";
+
+    const submitBtn = document.getElementById('submitBtn');
+    const originalBtnText = submitBtn.innerHTML;
+
+    document.getElementById("calcForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const resultadoDiv = document.getElementById("resultado");
+      const button = submitBtn;
+      resultadoDiv.style.display = "none";
+      resultadoDiv.innerText = "";
+
+      const operacion = document.getElementById("operacion").value;
+
+      // Animación: mostrar spinner y texto
+      button.classList.add("loading");
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner" aria-hidden="true"></span> Calculando...';
+
+      try {
+        const ipResponse = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipResponse.json();
+
+        const response = await fetch(webhookURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            operacion: operacion,
+            ip_publica: ipData.ip
+          })
+        });
+
+        if (!response.ok) throw new Error("Error al conectar con n8n");
+
+        const data = await response.json();
+
+        resultadoDiv.style.display = "block";
+        resultadoDiv.innerHTML = `
+          <div class="card2">
+            <h1>Resultado de la Operación</h1>
+            <p><strong>Operación:</strong> ${data.operacion}</p>
+            <p><strong>Resultado:</strong> ${data.resultado}</p>
+          </div>
+        `;
+      } catch (err) {
+        resultadoDiv.style.display = "block";
+        resultadoDiv.innerHTML = `⚠️ Error: ${err.message}`;
+      } finally {
+        // Restaurar botón
+        button.classList.remove("loading");
+        button.disabled = false;
+        button.innerHTML = originalBtnText;
+        e.target.reset();
+      }
+    });
+  </script>
+</body>
+</html>
